@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { excelService } from '../services'
 import macroService from '../services/macroService'
+import currencyService from '../services/currencyService'
 import type { ExcelData, Sheet } from '../types'
 import type { MacroData } from '../services/macroService'
+import { StockCalculator, COLUMN_NAMES } from '../utils/stockCalculations'
 
 interface DataViewerProps {
   selectedFile: string | null
@@ -28,6 +30,16 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
   const [isFiltering, setIsFiltering] = useState<boolean>(false)
   const [filterError, setFilterError] = useState<string | null>(null)
 
+  // Döviz kuru modal'ı için state'ler
+  const [showCurrencyModal, setShowCurrencyModal] = useState<boolean>(false)
+  const [manualCurrencyRates, setManualCurrencyRates] = useState<Record<string, number> | null>(null)
+  const [currencyFormData, setCurrencyFormData] = useState<Record<string, string>>({
+    USD: '',
+    EUR: '',
+    GBP: '',
+    JPY: ''
+  })
+
   const clearMessages = () => {
     setError(null)
     setSuccess(null)
@@ -45,7 +57,7 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
 
     // Sadece hedef dosyalar için filtreleme yap
     const targetFiles = [
-      'gerceklesenmakrodata_20250905104736.xlsx',
+  'gerceklesenmakrodata_20250915153256.xlsx',
       'gerceklesenhesap_20250905104743.xlsx'
     ]
 
@@ -60,25 +72,51 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     try {
       let results: MacroData[] = []
       
-      if (selectedFile === 'gerceklesenmakrodata_20250905104736.xlsx') {
+  if (selectedFile === 'gerceklesenmakrodata_20250915153256.xlsx') {
         results = await macroService.quickSearchMakroOnly(documentNumber)
       } else if (selectedFile === 'gerceklesenhesap_20250905104743.xlsx') {
         results = await macroService.searchInHesap(documentNumber)
       }
       
-      console.log('📊 Filtrelenmiş veri:', results)
-      if (results.length > 0) {
-        console.log('📋 İlk kayıt yapısı:', results[0])
-        console.log('🔑 Kullanılabilir anahtarlar:', Object.keys(results[0]))
-        if (results[0].data) {
-          console.log('📁 Data objesi anahtarları:', Object.keys(results[0].data))
-          console.log('💾 Data objesi içeriği:', results[0].data)
+      console.log('📊 Filtrelenmiş veri (filtreleme öncesi):', results)
+      
+      // Column 7'de "Mamul" olan kayıtları filtrele (çıkar)
+      const filteredResults = results.filter((item) => {
+        let column7Value = '';
+        
+        // Column 7 değerini al
+        if (item.data && typeof item.data === 'object') {
+          const allKeys = Object.keys(item.data);
+          const column7Key = allKeys[6]; // Column 7 = index 6
+          if (column7Key) {
+            column7Value = String(item.data[column7Key] || '').trim();
+          }
+        } else {
+          const allKeys = Object.keys(item).filter(key => !['id', 'fileName', 'sheetName', 'rowIndex'].includes(key));
+          const column7Key = allKeys[6]; // Column 7 = index 6
+          if (column7Key) {
+            column7Value = String(item[column7Key] || '').trim();
+          }
+        }
+        
+        // "Mamul" içeren kayıtları filtrele
+        return !column7Value.toLowerCase().includes('mamul');
+      });
+      
+      console.log(`📊 Filtreleme sonucu: ${results.length} kayıt bulundu, ${filteredResults.length} kayıt gösteriliyor (Mamul kayıtları filtrelendi)`);
+      
+      if (filteredResults.length > 0) {
+        console.log('📋 İlk kayıt yapısı:', filteredResults[0])
+        console.log('🔑 Kullanılabilir anahtarlar:', Object.keys(filteredResults[0]))
+        if (filteredResults[0].data) {
+          console.log('📁 Data objesi anahtarları:', Object.keys(filteredResults[0].data))
+          console.log('💾 Data objesi içeriği:', filteredResults[0].data)
         }
       }
-      setFilteredData(results)
+      setFilteredData(filteredResults)
       
-      if (results.length === 0) {
-        setFilterError(`Dosya numarası "${documentNumber}" için veri bulunamadı`)
+      if (filteredResults.length === 0) {
+        setFilterError(`Dosya numarası "${documentNumber}" için veri bulunamadı (Mamul kayıtları filtrelendi)`)
       }
     } catch (error) {
       setFilterError('Filtreleme sırasında hata oluştu: ' + (error as Error).message)
@@ -94,6 +132,65 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     setFilteredData([])
     setIsFiltering(false)
     setFilterError(null)
+  }
+
+  // Döviz kuru modal'ı fonksiyonları
+  const openCurrencyModal = () => {
+    setShowCurrencyModal(true)
+  }
+
+  const closeCurrencyModal = () => {
+    setShowCurrencyModal(false)
+    // Form verilerini temizle
+    setCurrencyFormData({
+      USD: '',
+      EUR: '',
+      GBP: '',
+      JPY: ''
+    })
+  }
+
+  const handleCurrencyInputChange = (currency: string, value: string) => {
+    setCurrencyFormData(prev => ({
+      ...prev,
+      [currency]: value
+    }))
+  }
+
+  const saveCurrencyRates = () => {
+    // Form verilerini number'a çevir ve validate et
+    const rates: Record<string, number> = {}
+    let hasValidRate = false
+
+    Object.entries(currencyFormData).forEach(([currency, value]) => {
+      const numValue = parseFloat(value.replace(',', '.'))
+      if (!isNaN(numValue) && numValue > 0) {
+        rates[currency] = numValue
+        hasValidRate = true
+      }
+    })
+
+    if (!hasValidRate) {
+      setError('En az bir geçerli döviz kuru giriniz')
+      return
+    }
+
+    // Manuel kurları ayarla
+    currencyService.setManualRates(rates)
+    setManualCurrencyRates(rates)
+    setSuccess('✅ Manuel döviz kurları başarıyla ayarlandı! Hesaplamalar bu kurları kullanacak.')
+    closeCurrencyModal()
+  }
+
+  const clearManualRates = () => {
+    currencyService.clearManualRates()
+    setManualCurrencyRates(null)
+    setSuccess('✅ Manuel döviz kurları temizlendi! API kurları kullanılacak.')
+  }
+
+  // Dosyanın manuel kur ayarını destekleyip desteklemediğini kontrol et
+  const shouldShowCurrencyButton = () => {
+    return selectedFile === 'gerceklesenmakrodata_20250915153256.xlsx'
   }
 
   useEffect(() => {
@@ -282,22 +379,33 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     }
   }
 
-  const startEdit = (row: ExcelData | MacroData) => {
+  const startEdit = async (row: ExcelData | MacroData) => {
     setEditingRow(row.id)
+    let initialData: Record<string, string | number>
+    
     // Filtrelenmiş veri için MacroData.data, normal veri için ExcelData.data kullan
     if ('data' in row && row.data) {
-      setEditData(row.data as Record<string, string | number>)
+      initialData = row.data as Record<string, string | number>
     } else {
       // MacroData'da data objesi yoksa direkt row'dan kullan
       const excludeFields = ['id', 'documentNumber', 'fileName', 'sheetName', 'rowIndex', 'createdDate', 'modifiedDate', 'version', 'modifiedBy']
-      const editableData: Record<string, string | number> = {}
+      initialData = {}
       Object.keys(row).forEach(key => {
         if (!excludeFields.includes(key)) {
           const value = (row as Record<string, unknown>)[key]
-          editableData[key] = typeof value === 'string' || typeof value === 'number' ? value : String(value || '')
+          initialData[key] = typeof value === 'string' || typeof value === 'number' ? value : String(value || '')
         }
       })
-      setEditData(editableData)
+    }
+    
+    // Başlangıçta hesaplamaları da yap - döviz kuru ile
+    try {
+      const calculatedData = await performCalculationsAsync(initialData)
+      setEditData(calculatedData)
+    } catch (error) {
+      console.error('❌ Async calculation failed in startEdit, using sync:', error)
+      const calculatedData = performCalculations(initialData)
+      setEditData(calculatedData)
     }
   }
 
@@ -306,14 +414,117 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     setEditData({})
   }
 
+  // Hesaplama yapan fonksiyon (sync versiyon)
+  const performCalculations = (currentEditData: Record<string, string | number>) => {
+    // Sadece belirtilen dosya için hesaplama yap
+    if (!StockCalculator.shouldCalculateFor(selectedFile)) {
+      return currentEditData
+    }
+
+    const girişMiktarı = StockCalculator.toNumber(currentEditData[COLUMN_NAMES.TOPLAM_STOK_GIRIS_MIKTARI])
+    const çıkışMiktarı = StockCalculator.toNumber(currentEditData[COLUMN_NAMES.TOPLAM_STOK_CIKIS_MIKTARI])
+    const birimFiyat = StockCalculator.toNumber(currentEditData[COLUMN_NAMES.SATINALMA_BIRIM_FIYAT])
+    const paraBirimi = String(currentEditData[COLUMN_NAMES.PARA_BIRIMI] || 'TRY')
+
+    const calculations = StockCalculator.calculateAll({
+      girişMiktarı,
+      çıkışMiktarı,
+      birimFiyat,
+      paraBirimi
+    })
+
+    // Güncellenen veriyi oluştur - TRY olarak göster
+    const updatedData = {
+      ...currentEditData,
+      [COLUMN_NAMES.TOPLAM_STOK_MIKTARI]: calculations.toplamStokMiktarı,
+      [COLUMN_NAMES.TOPLAM_FIYAT]: calculations.toplamFiyatTRY // Her zaman TRY cinsinden göster
+    }
+
+    return updatedData
+  }
+
+  // Async hesaplama yapan fonksiyon (döviz kuru ile)
+  const performCalculationsAsync = async (currentEditData: Record<string, string | number>) => {
+    // Sadece belirtilen dosya için hesaplama yap
+    if (!StockCalculator.shouldCalculateFor(selectedFile)) {
+      return currentEditData
+    }
+
+    const girişMiktarı = StockCalculator.toNumber(currentEditData[COLUMN_NAMES.TOPLAM_STOK_GIRIS_MIKTARI])
+    const çıkışMiktarı = StockCalculator.toNumber(currentEditData[COLUMN_NAMES.TOPLAM_STOK_CIKIS_MIKTARI])
+    const birimFiyat = StockCalculator.toNumber(currentEditData[COLUMN_NAMES.SATINALMA_BIRIM_FIYAT])
+    const paraBirimi = String(currentEditData[COLUMN_NAMES.PARA_BIRIMI] || 'TRY')
+
+    console.log(`💰 Calculating price for ${paraBirimi}: ${birimFiyat}`)
+
+    const calculations = await StockCalculator.calculateAllWithCurrency({
+      girişMiktarı,
+      çıkışMiktarı,
+      birimFiyat,
+      paraBirimi
+    })
+
+    // Güncellenen veriyi oluştur - Her zaman TRY cinsinden göster
+    const updatedData = {
+      ...currentEditData,
+      [COLUMN_NAMES.TOPLAM_STOK_MIKTARI]: calculations.toplamStokMiktarı,
+      [COLUMN_NAMES.TOPLAM_FIYAT]: calculations.toplamFiyatTRY // Her zaman TRY cinsinden
+    }
+
+    return updatedData
+  }
+
+  // EditData değişiklik handler'ı
+  const handleEditDataChange = async (column: string, value: string) => {
+    const newEditData = { ...editData, [column]: value }
+    
+    // Eğer değişen sütun hesaplamaya etki ediyorsa, hesapla
+    const affectedColumns = [
+      COLUMN_NAMES.TOPLAM_STOK_GIRIS_MIKTARI,
+      COLUMN_NAMES.TOPLAM_STOK_CIKIS_MIKTARI,
+      COLUMN_NAMES.SATINALMA_BIRIM_FIYAT,
+      COLUMN_NAMES.PARA_BIRIMI // Para birimi değiştiğinde de hesapla
+    ] as string[]
+
+    if (affectedColumns.includes(column)) {
+      // Para birimi veya fiyat alanı değiştiğinde döviz kurunu da hesapla
+      if (column === COLUMN_NAMES.PARA_BIRIMI || column === COLUMN_NAMES.SATINALMA_BIRIM_FIYAT) {
+        try {
+          const calculatedData = await performCalculationsAsync(newEditData)
+          setEditData(calculatedData)
+        } catch (error) {
+          console.error('❌ Async calculation failed, falling back to sync:', error)
+          const calculatedData = performCalculations(newEditData)
+          setEditData(calculatedData)
+        }
+      } else {
+        // Diğer alanlar için sync hesaplama yeterli
+        const calculatedData = performCalculations(newEditData)
+        setEditData(calculatedData)
+      }
+    } else {
+      setEditData(newEditData)
+    }
+  }
+
   const saveEdit = async (rowId: number) => {
     setLoading(true)
     clearMessages()
     try {
-  // ...debug log removed...
+      // Backend için veriyi hazırla - tüm değerleri string'e çevir
+      const cleanEditData = Object.fromEntries(
+        Object.entries(editData).map(([key, value]) => [key, String(value)])
+      )
+
+      console.log('🔄 Saving edit data:', {
+        id: rowId,
+        data: cleanEditData,
+        modifiedBy: 'Frontend User'
+      })
+      
       const response = await excelService.updateData({
         id: rowId,
-        data: editData,
+        data: cleanEditData,
         modifiedBy: 'Frontend User' // Bu değeri gerçek kullanıcı bilgisi ile değiştirin
       })
       
@@ -498,6 +709,31 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
             </button>
           </>
         )}
+        
+        {/* Döviz Kuru Yönetim Butonları (sadece makro dosyası için) */}
+        {shouldShowCurrencyButton() && (
+          <>
+            <button 
+              onClick={openCurrencyModal}
+              disabled={loading}
+              className="btn btn-info"
+              style={{ marginRight: '10px', backgroundColor: '#28a745', color: '#fff' }}
+            >
+              💰 Manuel Döviz Kurları
+            </button>
+            {manualCurrencyRates && (
+              <button 
+                onClick={clearManualRates}
+                disabled={loading}
+                className="btn btn-secondary"
+                style={{ marginRight: '10px', backgroundColor: '#6c757d', color: '#fff' }}
+              >
+                🗑️ Manuel Kurları Temizle
+              </button>
+            )}
+          </>
+        )}
+        
         {!selectedFile && (
           <span style={{ color: '#666', fontSize: '14px' }}>
             Önce Dosya Yönetimi sayfasından bir dosya seçin
@@ -638,6 +874,23 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
         </div>
       )}
 
+      {/* Hesaplama Bilgilendirmesi */}
+      {StockCalculator.shouldCalculateFor(selectedFile) && (
+        <div style={{ marginBottom: '1rem', padding: '12px', backgroundColor: '#e7f3ff', border: '1px solid #007acc', borderRadius: '5px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <span style={{ fontSize: '18px' }}>🧮</span>
+            <strong style={{ color: '#0056b3' }}>Otomatik Hesaplama Aktif</strong>
+          </div>
+          <div style={{ fontSize: '14px', color: '#0056b3', lineHeight: '1.4' }}>
+            <div>📊 <strong>Toplam Stok Miktarı</strong> = Giriş Miktarı - Çıkış Miktarı</div>
+            <div>💰 <strong>Toplam Fiyat</strong> = Toplam Stok Miktarı × Birim Fiyat</div>
+            <div style={{ marginTop: '6px', fontSize: '12px', fontStyle: 'italic' }}>
+              ℹ️ Giriş/Çıkış miktarı veya birim fiyat değiştirdiğinizde hesaplamalar otomatik olarak güncellenir.
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Data Table */}
       {(filteredData.length > 0 || data.length > 0) ? (
         <div className="data-table">
@@ -665,12 +918,29 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
                   {getColumns().map((column) => (
                     <td key={column}>
                       {editingRow === row.id ? (
-                        <input
-                          type="text"
-                          value={editData[column] || ''}
-                          onChange={(e) => setEditData({...editData, [column]: e.target.value})}
-                          style={{ width: '100%', padding: '4px' }}
-                        />
+                        (() => {
+                          // Hesaplanan alanlar sadece okunabilir
+                          const isCalculatedField = StockCalculator.shouldCalculateFor(selectedFile) && 
+                            (column === COLUMN_NAMES.TOPLAM_STOK_MIKTARI || column === COLUMN_NAMES.TOPLAM_FIYAT);
+                          
+                          return (
+                            <input
+                              type="text"
+                              value={editData[column] || ''}
+                              onChange={isCalculatedField ? undefined : async (e) => await handleEditDataChange(column, e.target.value)}
+                              readOnly={isCalculatedField}
+                              style={{ 
+                                width: '100%', 
+                                padding: '4px',
+                                backgroundColor: isCalculatedField ? '#f0f8ff' : 'white',
+                                border: isCalculatedField ? '2px solid #007acc' : '1px solid #ccc',
+                                cursor: isCalculatedField ? 'not-allowed' : 'text',
+                                fontWeight: isCalculatedField ? 'bold' : 'normal'
+                              }}
+                              title={isCalculatedField ? 'Bu alan otomatik hesaplanır' : ''}
+                            />
+                          )
+                        })()
                       ) : (
                         <span title={`${column}: ${String(filteredData.length > 0 
                           ? (row as MacroData & { data?: Record<string, string | number> })?.data?.[column] || (row as MacroData)[column] || '' 
@@ -710,7 +980,7 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
                       <div>
                         <button 
                           className="btn btn-primary btn-sm"
-                          onClick={() => startEdit(row as ExcelData | MacroData)}
+                          onClick={async () => await startEdit(row as ExcelData | MacroData)}
                           style={{ backgroundColor: '#ff6f61', color: '#fff8f0', marginRight: '4px' }}
                         >
                           Düzenle
@@ -779,6 +1049,137 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
       {loading && (
         <div style={{ textAlign: 'center', padding: '1rem' }}>
           <div className="spinner"></div>
+        </div>
+      )}
+
+      {/* Döviz Kuru Modal'ı */}
+      {showCurrencyModal && (
+        <div className="modal-overlay" style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div className="modal-content" style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            padding: '24px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '80vh',
+            overflowY: 'auto',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
+          }}>
+            <div className="modal-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '20px'
+            }}>
+              <h3 style={{ margin: 0, color: '#333' }}>💰 Manuel Döviz Kurları</h3>
+              <button 
+                onClick={closeCurrencyModal}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#666'
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="modal-body">
+              <p style={{ marginBottom: '20px', color: '#666' }}>
+                Hesaplamalarda kullanılacak döviz kurlarını manuel olarak girebilirsiniz. 
+                Boş bırakılan kurlar API'den alınacaktır.
+              </p>
+              
+              <div className="currency-inputs" style={{ display: 'grid', gap: '16px' }}>
+                {['USD', 'EUR', 'GBP', 'JPY'].map((currency) => (
+                  <div key={currency} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <label style={{ 
+                      minWidth: '40px', 
+                      fontWeight: 'bold',
+                      color: '#333'
+                    }}>
+                      {currency}:
+                    </label>
+                    <input 
+                      type="number"
+                      step="0.01"
+                      placeholder={`1 ${currency} = ? TRY`}
+                      value={currencyFormData[currency]}
+                      onChange={(e) => handleCurrencyInputChange(currency, e.target.value)}
+                      style={{
+                        flex: 1,
+                        padding: '8px 12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <span style={{ color: '#666', fontSize: '14px' }}>TRY</span>
+                  </div>
+                ))}
+              </div>
+
+              {currencyService.hasManualRates() && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '12px',
+                  backgroundColor: '#d4edda',
+                  border: '1px solid #c3e6cb',
+                  borderRadius: '4px',
+                  color: '#155724'
+                }}>
+                  ✅ Şu anda manuel kurlar kullanılıyor
+                </div>
+              )}
+            </div>
+            
+            <div className="modal-footer" style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+              marginTop: '24px'
+            }}>
+              <button 
+                onClick={closeCurrencyModal}
+                style={{
+                  padding: '8px 16px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  backgroundColor: 'white',
+                  color: '#333',
+                  cursor: 'pointer'
+                }}
+              >
+                İptal
+              </button>
+              <button 
+                onClick={saveCurrencyRates}
+                style={{
+                  padding: '8px 16px',
+                  border: 'none',
+                  borderRadius: '4px',
+                  backgroundColor: '#28a745',
+                  color: 'white',
+                  cursor: 'pointer'
+                }}
+              >
+                💾 Kaydet
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

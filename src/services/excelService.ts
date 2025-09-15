@@ -219,6 +219,8 @@ class ExcelService {
   // Update single row
   async updateData(update: ExcelDataUpdate): Promise<ApiResponse> {
     try {
+      console.log('📤 Sending update request:', JSON.stringify(update, null, 2))
+      
       const response = await this.fetchWithTimeout(
         `${API_CONFIG.BASE_URL}${API_ENDPOINTS.EXCEL.UPDATE_DATA}`,
         {
@@ -226,10 +228,23 @@ class ExcelService {
           body: JSON.stringify(update),
         }
       )
-      return await response.json()
+      
+      console.log('📡 Response status:', response.status, response.statusText)
+      
+      // Her durumda response'u JSON olarak parse etmeye çalış
+      const result = await response.json()
+      console.log('📦 Backend response:', result)
+      
+      if (!response.ok) {
+        console.error('❌ Backend error response:', result)
+        throw new Error(`HTTP ${response.status}: ${result.message || result.error || 'Backend hatası'}`)
+      }
+      
+      console.log('✅ Update successful:', result)
+      return result
     } catch (error) {
-      console.error('Failed to update data:', error)
-      throw new Error('Veri güncellenirken hata oluştu')
+      console.error('💥 Failed to update data:', error)
+      throw error instanceof Error ? error : new Error('Veri güncellenirken hata oluştu')
     }
   }
 

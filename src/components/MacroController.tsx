@@ -18,7 +18,7 @@ const MacroController: React.FC = () => {
 
   // Sadece makro dosyası aranacak
   const targetFiles = [
-    'gerceklesenmakrodata_20250905104736.xlsx'
+  'gerceklesenmakrodata_20250915153256.xlsx'
   ]
 
   // Hesap dosyasında arama yapan fonksiyon
@@ -79,8 +79,32 @@ const MacroController: React.FC = () => {
             seenIds.add(item.id);
           }
         }
-        setSearchResults(uniqueResults)
-        console.log(`✅ Toplam ${uniqueResults.length} kayıt bulundu`)
+
+        // Column 7'de "Mamul" olan kayıtları filtrele (çıkar)
+        const filteredResults = uniqueResults.filter((item) => {
+          let column7Value = '';
+          
+          // Column 7 değerini al
+          if (item.data && typeof item.data === 'object') {
+            const allKeys = Object.keys(item.data);
+            const column7Key = allKeys[6]; // Column 7 = index 6
+            if (column7Key) {
+              column7Value = String(item.data[column7Key] || '').trim();
+            }
+          } else {
+            const allKeys = Object.keys(item).filter(key => !['id', 'fileName', 'sheetName', 'rowIndex'].includes(key));
+            const column7Key = allKeys[6]; // Column 7 = index 6
+            if (column7Key) {
+              column7Value = String(item[column7Key] || '').trim();
+            }
+          }
+          
+          // "Mamul" içeren kayıtları filtrele
+          return !column7Value.toLowerCase().includes('mamul');
+        });
+
+        setSearchResults(filteredResults)
+        console.log(`✅ Toplam ${results.length} kayıt bulundu, ${filteredResults.length} kayıt gösteriliyor (Mamul kayıtları filtrelendi)`)
       } else {
         setError(`Dosya numarası "${documentNumber}" için veri bulunamadı`)
         console.log('❌ Arama sonucu boş')
@@ -212,21 +236,21 @@ const MacroController: React.FC = () => {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Row ID</th>
+              <th>Satır No</th>
               {selectedColumns.map((column, idx) => (
                 <th key={column}>{getColumnHeader(column, idx)}</th>
               ))}
-              <th>İşlemler</th>
+              {/* İşlemler sütunu kaldırıldı */}
             </tr>
           </thead>
           <tbody>
             {searchResults.map((row, index) => {
-              // Row ID'yi oluştur - eğer yoksa index kullan
-              const rowId = row.id || row.rowId || index;
+              // Satır No'yu göster - rowIndex varsa onu kullan, yoksa index
+              const satirNo = row.rowIndex !== undefined ? row.rowIndex : index + 1;
               const uniqueKey = `${row.id}-${index}`;
               return (
                 <tr key={uniqueKey}>
-                  <td>{rowId}</td>
+                  <td>{satirNo}</td>
                   {selectedColumns.map((column) => {
                     let cellValue: string | number | object | null = null;
                     // Malzeme Numarası için hem data hem ana objede kontrol et
@@ -248,29 +272,18 @@ const MacroController: React.FC = () => {
                       ? JSON.stringify(cellValue)
                       : String(cellValue || '');
                     if (displayValue === 'DIV0') displayValue = '';
-                    return (
-                      <td key={column}>{editingRow === rowId ? (
-                        <input
-                          type="text"
-                          value={editData[column] || ''}
-                          onChange={(e) => handleInputChange(column, e.target.value)}
-                          className="edit-input"
-                        />
-                      ) : (
-                        displayValue
-                      )}</td>
-                    );
+                      
+                      // Toplam Fiyat sütunu ise her zaman TRY ekle (çünkü hesaplama TRY'ye çevrilmiş olarak gelir)
+                      const isToplamFiyat = columnMapping['Toplam Fiyat'].includes(column);
+                      return (
+                        <td key={column}>
+                          {isToplamFiyat && displayValue !== '' && displayValue !== '0'
+                            ? `${displayValue} TRY`
+                            : displayValue}
+                        </td>
+                      );
                   })}
-                  <td>
-                    {editingRow === rowId ? (
-                      <div className="edit-actions">
-                        <button onClick={saveEdit} className="save-btn">Kaydet</button>
-                        <button onClick={cancelEdit} className="cancel-btn">İptal</button>
-                      </div>
-                    ) : (
-                      <button onClick={() => startEdit({...row, id: typeof rowId === 'number' ? rowId : parseInt(String(rowId)) || index})} className="edit-btn">Düzenle</button>
-                    )}
-                  </td>
+                  {/* İşlemler sütunu kaldırıldı */}
                 </tr>
               );
             })}
@@ -287,8 +300,8 @@ const MacroController: React.FC = () => {
     }
 
     // Tüm satırları kontrol ederek mevcut olan tüm sütunları topla
-    const allDataColumns = new Set<string>()
-    const metaColumns = ['id', 'fileName', 'sheetName', 'rowIndex']
+        const allDataColumns = new Set<string>();
+        const metaColumns = ['rowIndex'];
     let hasDataProperty = false
 
     // Tüm satırları gez ve mevcut kolonları topla
@@ -316,12 +329,9 @@ const MacroController: React.FC = () => {
 
     // Sütun başlıkları için Türkçe karşılıklar
     const getColumnHeader = (column: string): string => {
-      const headerMap: Record<string, string> = {
-        'id': 'ID',
-        'fileName': 'Dosya Adı',
-        'sheetName': 'Sayfa Adı',
-        'rowIndex': 'Satır No'
-      }
+        const headerMap: Record<string, string> = { 
+          'rowIndex': 'Satır No'
+        };
       return headerMap[column] || column
     }
 
@@ -352,11 +362,15 @@ const MacroController: React.FC = () => {
                     const displayValue = typeof cellValue === 'object' && cellValue !== null 
                       ? JSON.stringify(cellValue) 
                       : String(cellValue || '');
-                    return (
-                      <td key={column}>
-                        {displayValue}
-                      </td>
-                    );
+                      // Toplam Fiyat sütunu ise her zaman TRY ekle (hesaplama TRY'ye çevrilmiş olarak gelir)
+                      const isToplamFiyat = column.toLowerCase().includes('fiyat');
+                      return (
+                        <td key={column}>
+                          {isToplamFiyat && displayValue !== '' && displayValue !== '0'
+                            ? `${displayValue} TRY`
+                            : displayValue}
+                        </td>
+                      );
                   })}
                 </tr>
               );

@@ -218,6 +218,9 @@
 .data-table input {
   width: 100%;
   padding: 4px;
+  background: #fff !important;
+  color: #111 !important;
+  opacity: 1 !important;
 }
 
 /* Date/meta text styling */
@@ -855,6 +858,9 @@
   border: 1px solid #ced4da;
   border-radius: 4px;
   font-size: 0.9rem;
+  background: #fff !important;
+  color: #111 !important;
+  opacity: 1 !important;
 }
 
 .edit-input:focus {
