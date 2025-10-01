@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import macroService from '../services/macroService'
-import type { MacroData, DocumentStatistics, UpdateRequest } from '../services/macroService'
+import type { MacroData, DocumentStatistics } from '../services/macroService'
 
 const MacroController: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'ozet' | 'ham' | 'pivot'>('ozet')
@@ -12,8 +12,6 @@ const MacroController: React.FC = () => {
   const [hesapLoading, setHesapLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [hesapError, setHesapError] = useState<string | null>(null)
-  const [editingRow, setEditingRow] = useState<number | null>(null)
-  const [editData, setEditData] = useState<Record<string, string | number>>({})
 
   // Hesap dosyasında arama yapan fonksiyon
   const handleHesapSearch = async () => {
