@@ -15,12 +15,6 @@ const MacroController: React.FC = () => {
   const [editingRow, setEditingRow] = useState<number | null>(null)
   const [editData, setEditData] = useState<Record<string, string | number>>({})
 
-
-  // Sadece makro dosyası aranacak
-  // const targetFiles = [
-  'gerceklesenmakrodata_20250915153256.xlsx'
-  ]
-
   // Hesap dosyasında arama yapan fonksiyon
   const handleHesapSearch = async () => {
     if (!documentNumber.trim()) {
@@ -121,19 +115,19 @@ const MacroController: React.FC = () => {
   }
 
   // Düzenleme modunu başlat
-  // const startEdit = (row: MacroData) => {
+  const startEdit = (row: MacroData) => {
     setEditingRow(row.id)
     setEditData({ ...row })
   }
 
   // Düzenlemeyi iptal et
-  // const cancelEdit = () => {
+  const cancelEdit = () => {
     setEditingRow(null)
     setEditData({})
   }
 
   // Veriyi güncelle
-  // const saveEdit = async () => {
+  const saveEdit = async () => {
     if (editingRow === null) return
 
     try {
@@ -212,9 +206,9 @@ const MacroController: React.FC = () => {
       findColumnKey('Toplam Stok Çıkış Miktarı'),
       findColumnKey('Toplam Stok Miktarı'),
       findColumnKey('Satınalma Birim Fiyat'), // tekrar
-  findColumnKey('Toplam Fiyat'),
-  // Malzeme Numarası her zaman eklenmeli
-  'Malzeme Numarası'
+      findColumnKey('Toplam Fiyat'),
+      // Malzeme Numarası her zaman eklenmeli
+      'Malzeme Numarası'
     ].filter(Boolean);
 
     // Sütun başlıkları
@@ -227,7 +221,7 @@ const MacroController: React.FC = () => {
       if (columnMapping['Toplam Stok Çıkış Miktarı'].includes(column)) return 'Toplam Stok Çıkış Miktarı';
       if (columnMapping['Toplam Stok Miktarı'].includes(column)) return 'Toplam Stok Miktarı';
       if (columnMapping['Toplam Fiyat'].includes(column)) return 'Toplam Fiyat';
-  if (column === 'Malzeme Numarası' || (columnMapping['Malzeme Numarası'] && columnMapping['Malzeme Numarası'].includes(column))) return 'Malzeme Numarası';
+      if (column === 'Malzeme Numarası' || (columnMapping['Malzeme Numarası'] && columnMapping['Malzeme Numarası'].includes(column))) return 'Malzeme Numarası';
       return column;
     };
 
@@ -300,8 +294,8 @@ const MacroController: React.FC = () => {
     }
 
     // Tüm satırları kontrol ederek mevcut olan tüm sütunları topla
-        const allDataColumns = new Set<string>();
-        const metaColumns = ['rowIndex'];
+    const allDataColumns = new Set<string>();
+    const metaColumns = ['rowIndex'];
     let hasDataProperty = false
 
     // Tüm satırları gez ve mevcut kolonları topla
