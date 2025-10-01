@@ -50,9 +50,17 @@ const FileManager: React.FC<FileManagerProps> = ({ onFileSelect, onNavigate }) =
         }
       }
     } catch (error) {
-      console.error('❌ Connection test error:', error)
-      setConnectionStatus('disconnected')
-      setError(`Backend bağlantısı kurulamadı: ${error.message || 'Bilinmeyen hata'}`)
+  console.error('❌ Connection test error:', error);
+  setConnectionStatus('disconnected');
+
+  // Hatanın mesajını güvenli bir şekilde alalım
+  let errorMessage = 'Bilinmeyen bir hata oluştu.';
+  if (error instanceof Error) {
+    errorMessage = error.message;
+  }
+
+  setError(`Backend bağlantısı kurulamadı: ${errorMessage}`);
+}
     }
   }
 
