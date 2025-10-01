@@ -2,7 +2,7 @@ import { API_CONFIG } from '../services/config'
 
 export const diagnoseExcelError = async () => {
   console.log('🔍 EXCEL ERROR DIAGNOSIS STARTING...')
-  console.log('=' .repeat(50))
+  console.log('='.repeat(50))
   
   // 1. Check configuration
   console.log('📋 1. CONFIGURATION CHECK:')
@@ -24,7 +24,6 @@ export const diagnoseExcelError = async () => {
     
     console.log('   Response Status:', response.status)
     console.log('   Response OK:', response.ok)
-    console.log('   Response Headers:', Object.fromEntries(response.headers.entries()))
     
     if (response.ok) {
       const result = await response.json()
@@ -37,7 +36,11 @@ export const diagnoseExcelError = async () => {
     }
   } catch (error) {
     console.log('   💥 Backend Connection: ERROR')
-    console.log('   Error:', error)
+    if (error instanceof Error) {
+      console.log('   Error Message:', error.message);
+    } else {
+      console.log('   Raw Error:', error);
+    }
   }
   console.log('')
   
@@ -57,14 +60,14 @@ export const diagnoseExcelError = async () => {
     if (response.ok) {
       const result = await response.json()
       console.log('   ✅ Files List: SUCCESS')
-      console.log('   Available Files:', result.data || result)
+      const files = result.data || result.files || []
+      console.log('   Available Files:', files)
       
       // Test with the problematic file if it exists
-      const files = result.data || result.files || []
       const problematicFile = files.find((f: any) => 
         f.fileName?.includes('Gerçekleşen') || 
         f.name?.includes('Gerçekleşen') ||
-        f.includes?.('Gerçekleşen')
+        (typeof f === 'string' && f.includes('Gerçekleşen'))
       )
       
       if (problematicFile) {
@@ -78,12 +81,16 @@ export const diagnoseExcelError = async () => {
     }
   } catch (error) {
     console.log('   💥 Files List: ERROR')
-    console.log('   Error:', error)
+    if (error instanceof Error) {
+      console.log('   Error Message:', error.message);
+    } else {
+      console.log('   Raw Error:', error);
+    }
   }
   console.log('')
   
   console.log('🔍 DIAGNOSIS COMPLETE')
-  console.log('=' .repeat(50))
+  console.log('='.repeat(50))
 }
 
 const testFileReading = async (file: any) => {
@@ -95,7 +102,6 @@ const testFileReading = async (file: any) => {
   try {
     const readUrl = `${API_CONFIG.BASE_URL}/excel/read/${encodeURIComponent(fileName)}`
     console.log('   Read URL:', readUrl)
-    console.log('   Encoded filename:', encodeURIComponent(fileName))
     
     const response = await fetch(readUrl, {
       method: 'POST',
@@ -112,9 +118,7 @@ const testFileReading = async (file: any) => {
     } else {
       console.log('   ❌ File Reading: FAILED')
       const errorText = await response.text()
-      console.log('   Error:', errorText)
       
-      // Try to parse error as JSON for more details
       try {
         const errorJson = JSON.parse(errorText)
         console.log('   Parsed Error:', errorJson)
@@ -124,25 +128,29 @@ const testFileReading = async (file: any) => {
     }
   } catch (error) {
     console.log('   💥 File Reading: ERROR')
-    console.log('   Error:', error)
+    if (error instanceof Error) {
+      console.log('   Error Message:', error.message);
+    } else {
+      console.log('   Raw Error:', error);
+    }
   }
 }
 
 // Helper function to test specific file
 export const testSpecificFile = async (fileName: string) => {
   console.log(`🔍 TESTING SPECIFIC FILE: ${fileName}`)
-  console.log('=' .repeat(50))
+  console.log('='.repeat(50))
   
   await testFileReading(fileName)
   
   console.log('🔍 SPECIFIC FILE TEST COMPLETE')
-  console.log('=' .repeat(50))
+  console.log('='.repeat(50))
 }
 
 // Helper function to test network connectivity
 export const testNetworkConnectivity = async () => {
   console.log('🌐 NETWORK CONNECTIVITY TEST')
-  console.log('=' .repeat(30))
+  console.log('='.repeat(30))
   
   const testUrls = [
     'http://localhost:5002',
@@ -160,10 +168,15 @@ export const testNetworkConnectivity = async () => {
       const response = await fetch(url, { method: 'GET' })
       console.log(`  Status: ${response.status} (${response.ok ? 'OK' : 'FAILED'})`)
     } catch (error) {
-      console.log(`  Error: ${error.message}`)
+      // *** BURASI DÜZELTİLDİ ***
+      if (error instanceof Error) {
+        console.log(`  Error: ${error.message}`);
+      } else {
+        console.log('  An unknown error occurred:', error);
+      }
     }
   }
   
   console.log('🌐 NETWORK TEST COMPLETE')
-  console.log('=' .repeat(30))
+  console.log('='.repeat(30))
 }
