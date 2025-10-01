@@ -17,7 +17,7 @@ const MacroController: React.FC = () => {
 
 
   // Sadece makro dosyası aranacak
-  const targetFiles = [
+  // const targetFiles = [
   'gerceklesenmakrodata_20250915153256.xlsx'
   ]
 
@@ -121,19 +121,19 @@ const MacroController: React.FC = () => {
   }
 
   // Düzenleme modunu başlat
-  const startEdit = (row: MacroData) => {
+  // const startEdit = (row: MacroData) => {
     setEditingRow(row.id)
     setEditData({ ...row })
   }
 
   // Düzenlemeyi iptal et
-  const cancelEdit = () => {
+  // const cancelEdit = () => {
     setEditingRow(null)
     setEditData({})
   }
 
   // Veriyi güncelle
-  const saveEdit = async () => {
+  // const saveEdit = async () => {
     if (editingRow === null) return
 
     try {
