@@ -114,49 +114,6 @@ const MacroController: React.FC = () => {
     }
   }
 
-  // Düzenleme modunu başlat
-  const startEdit = (row: MacroData) => {
-    setEditingRow(row.id)
-    setEditData({ ...row })
-  }
-
-  // Düzenlemeyi iptal et
-  const cancelEdit = () => {
-    setEditingRow(null)
-    setEditData({})
-  }
-
-  // Veriyi güncelle
-  const saveEdit = async () => {
-    if (editingRow === null) return
-
-    try {
-      const updateRequest: UpdateRequest = {
-        id: editingRow,
-        documentNumber: documentNumber,
-        data: editData
-      }
-
-      await macroService.updateDocumentData(updateRequest)
-      
-      // Aramayı yenile
-      await handleSearch()
-      
-      setEditingRow(null)
-      setEditData({})
-    } catch (error) {
-      setError('Güncelleme sırasında hata oluştu: ' + (error as Error).message)
-    }
-  }
-
-  // Input değişikliği
-  const handleInputChange = (field: string, value: string | number) => {
-    setEditData(prev => ({
-      ...prev,
-      [field]: value
-    }))
-  }
-
   // Tabloyu render et
   const renderDataTable = () => {
     if (searchResults.length === 0) {
