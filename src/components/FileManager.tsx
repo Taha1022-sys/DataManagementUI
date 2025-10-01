@@ -50,17 +50,16 @@ const FileManager: React.FC<FileManagerProps> = ({ onFileSelect, onNavigate }) =
         }
       }
     } catch (error) {
-  console.error('❌ Connection test error:', error);
-  setConnectionStatus('disconnected');
+      console.error('❌ Connection test error:', error);
+      setConnectionStatus('disconnected');
 
-  // Hatanın mesajını güvenli bir şekilde alalım
-  let errorMessage = 'Bilinmeyen bir hata oluştu.';
-  if (error instanceof Error) {
-    errorMessage = error.message;
-  }
+      // Hatanın mesajını güvenli bir şekilde alalım
+      let errorMessage = 'Bilinmeyen bir hata oluştu.';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
 
-  setError(`Backend bağlantısı kurulamadı: ${errorMessage}`);
-}
+      setError(`Backend bağlantısı kurulamadı: ${errorMessage}`);
     }
   }
 
@@ -213,7 +212,7 @@ Lütfen backend bağlantısını kontrol edin ve tekrar deneyin.`)
     onNavigate('data')
   }
 
-  const handleReprocessFile = async (fileName: string) => {
+  const handleReprocessFile = async (fileName:string) => {
     if (!confirm(`"${fileName}" dosyasını yeniden işlemek istediğinizden emin misiniz?`)) {
       return
     }
