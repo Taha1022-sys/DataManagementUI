@@ -57,8 +57,9 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
 
     // Sadece hedef dosyalar için filtreleme yap
     const targetFiles = [
-  'gerceklesenmakrodata_20251003191243.xlsx',
-      'gerceklesenhesap_20251003191421.xlsx'
+  'gerceklesenmakrodata_20251003204545.xlsx',
+      'gerceklesenhesap_20251003204832.xlsx
+'
     ]
 
     if (!selectedFile || !targetFiles.includes(selectedFile)) {
@@ -72,9 +73,9 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     try {
       let results: MacroData[] = []
       
-  if (selectedFile === 'gerceklesenmakrodata_20251003191243.xlsx') {
+  if (selectedFile === 'gerceklesenmakrodata_20251003204545.xlsx') {
         results = await macroService.quickSearchMakroOnly(documentNumber)
-      } else if (selectedFile === 'gerceklesenhesap_20251003191421.xlsx') {
+      } else if (selectedFile === 'gerceklesenhesap_20251003204832.xlsx') {
         results = await macroService.searchInHesap(documentNumber)
       }
       
@@ -189,7 +190,7 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
   }
 
   const shouldShowCurrencyButton = () => {
-    return selectedFile === 'gerceklesenmakrodata_20251003191243.xlsx'
+    return selectedFile === 'gerceklesenmakrodata_20251003204545.xlsx'
   }
 
   useEffect(() => {
