@@ -1,7 +1,7 @@
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: 'http://localhost:5002/api', // HTTP endpoint kullan (HTTPS sertifika sorunları için)
-  TIMEOUT: 30000, // 30 saniye timeout
+  BASE_URL: 'https://data-management-api-tft-e7cghghbhyffabg3.francecentral-01.azurewebsites.net/api', 
+  TIMEOUT: 30000, 
   HEADERS: {
     'Content-Type': 'application/json',
   }
