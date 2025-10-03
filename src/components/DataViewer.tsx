@@ -57,8 +57,8 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
 
     // Sadece hedef dosyalar için filtreleme yap
     const targetFiles = [
-  'gerceklesenmakrodata_20250915153256.xlsx',
-      'gerceklesenhesap_20250905104743.xlsx'
+  'gerceklesenmakrodata_20251003191243.xlsx',
+      'gerceklesenhesap_20251003191421.xlsx'
     ]
 
     if (!selectedFile || !targetFiles.includes(selectedFile)) {
@@ -72,9 +72,9 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     try {
       let results: MacroData[] = []
       
-  if (selectedFile === 'gerceklesenmakrodata_20250915153256.xlsx') {
+  if (selectedFile === 'gerceklesenmakrodata_20251003191243.xlsx') {
         results = await macroService.quickSearchMakroOnly(documentNumber)
-      } else if (selectedFile === 'gerceklesenhesap_20250905104743.xlsx') {
+      } else if (selectedFile === 'gerceklesenhesap_20251003191421.xlsx') {
         results = await macroService.searchInHesap(documentNumber)
       }
       
@@ -188,9 +188,8 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     setSuccess('✅ Manuel döviz kurları temizlendi! API kurları kullanılacak.')
   }
 
-  // Dosyanın manuel kur ayarını destekleyip desteklemediğini kontrol et
   const shouldShowCurrencyButton = () => {
-    return selectedFile === 'gerceklesenmakrodata_20250915153256.xlsx'
+    return selectedFile === 'gerceklesenmakrodata_20251003191243.xlsx'
   }
 
   useEffect(() => {
