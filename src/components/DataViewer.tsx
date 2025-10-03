@@ -58,8 +58,7 @@ const DataViewer: React.FC<DataViewerProps> = ({ selectedFile }) => {
     // Sadece hedef dosyalar için filtreleme yap
     const targetFiles = [
   'gerceklesenmakrodata_20251003204545.xlsx',
-      'gerceklesenhesap_20251003204832.xlsx
-'
+      'gerceklesenhesap_20251003204832.xlsx'
     ]
 
     if (!selectedFile || !targetFiles.includes(selectedFile)) {
